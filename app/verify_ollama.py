@@ -39,6 +39,15 @@ class OllamaVerifier:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.client.aclose()
 
+    def _get_error_details(self, e:Exception) -> Dict:
+        return  {
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'error_args': getattr(e, 'args', None),
+            'response_status': getattr(getattr(e, 'response', None), 'status_code', None),
+            'response_text': getattr(getattr(e, 'response', None), 'text', None)
+        }
+
     def _create_modelfile_content(self, model_path: Path) -> str:
         """Create content for a ModelFile with specific configurations"""
         return f"""FROM {model_path}
@@ -127,7 +136,8 @@ TEMPLATE \"""
             return False
 
         except Exception as e:
-            logger.error(f"❌ Failed to verify model {model_name}: {str(e)}")
+            error_details = self._get_error_details(e)
+            logger.error(f"❌ Failed to verify model {model_name}: {error_details}")
             return False
 
     async def verify_custom_model(self, model_name: str, model_path: Path) -> bool:
@@ -149,7 +159,8 @@ TEMPLATE \"""
             response.raise_for_status
             return await self.verify_model(model_name)
         except Exception as e:
-            logger.error(f"❌ Failed to verify custom model {model_name}: {str(e)}")
+            error_details = self._get_error_details(e)
+            logger.error(f"❌ Failed to verify custom model {model_name}: {error_details}")
             return False
     
     async def test_model_performance(self, model_name:str) -> Dict:
@@ -188,7 +199,8 @@ TEMPLATE \"""
                     results['response_times'].append(response_time)
 
             except Exception as e:
-                logger.error(f"❌ Test prompt failed: {str(e)}")
+                error_details = self._get_error_details(e)
+                logger.error(f"❌ Test prompt failed: {error_details}")
 
         if results['response_times']:
             results['average_response_times'] = sum(results['response_times'])/len(results['response_times'])
