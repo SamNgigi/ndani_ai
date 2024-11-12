@@ -151,6 +151,51 @@ TEMPLATE \"""
         except Exception as e:
             logger.error(f"❌ Failed to verify custom model {model_name}: {str(e)}")
             return False
+    
+    async def test_model_performance(self, model_name:str) -> Dict:
+        """Test model performance with resume-related prompts"""
+        test_prompts = [
+            "Summarize this experience: Developed web applications using Python and React",
+            "List key skills from: Expert in cloud architecture, CI/CD, and agile methodologies",
+            "Improve this bullet point: Managed team of developers"
+        ]
+
+        results = {
+            "successful_test": 0,
+            "total_tests": len(test_prompts),
+            "response_times": []
+        }
+
+        for prompt in test_prompts:
+            try:
+                start_time = asyncio.get_event_loop().time()
+                response = await self.client.post(
+                    f"{self.base_url}/api/generate",
+                    json = {
+                        "model": model_name,
+                        "prompt": prompt,
+                        "stream":False
+                    }
+                )
+                response.raise_for_status()
+                end_time = asyncio.get_event_loop().time()
+                response_time = end_time - start_time
+
+                result = response.json()
+                
+                if 'response' in result and result['response'].strip():
+                    results['successful_test'] += 1
+                    results['response_times'].append(response_time)
+
+            except Exception as e:
+                logger.error(f"❌ Test prompt failed: {str(e)}")
+
+        if results['response_times']:
+            results['average_response_times'] = sum(results['response_times'])/len(results['response_times'])
+        else:
+            results['average_response_times'] = 0
+        
+        return results
 
 
 async def main():
@@ -178,20 +223,30 @@ async def main():
 
             # Verifying and testing model
             if await verifier.verify_custom_model(model_name, model_path):
+                performance = await verifier.test_model_performance(model_name)
                 results.append({
                     "model": model_name,
-                    "status": "✅ Passed"
+                    "status": "✅ Passed",
+                    "performance": performance
                 })
             else:
                 results.append({
                     "model": model_name,
-                    "status": "❌ Failed"
+                    "status": "❌ Failed",
+                    "performance":None
                 })
 
         logger.info("\n📊 Verification Summary")
         for result in results:
-            logger.info(f"\nModel: {result['model']}")
-            logger.info(f"\nStatus: {result['status']}")
+            logger.info(f"Model: {result['model']}")
+            logger.info(f"Status: {result['status']}")
+            if result['performance']:
+                perf = result['performance']
+                logger.info(
+                    f"Performance:\n"
+                    f"  - Success rate: {perf['successful_test']}/{perf['total_tests']}\n"
+                    f"  - Average response time: {perf['average_response_times']:.2f}s"
+                )
 
         return 0 if any(r['status'].startswith('✅') for r in results) else 1
 
