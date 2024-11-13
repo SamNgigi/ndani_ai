@@ -1,7 +1,8 @@
 import asyncio
+import time
 import json
 import httpx
-import structlog
+import logging
 import shutil
 from datetime import datetime, timedelta
 from functools import lru_cache
@@ -17,16 +18,13 @@ import os
 # Load environment variables from .env file
 load_dotenv(override=True)
 
-# Configure structured logging
-structlog.configure(
-    processors = [
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.add_log_level,
-        structlog.processors.format_exc_info,
-        structlog.processors.JSONRenderer()
-    ]
+# logging config
+logging.basicConfig(
+    level = logging.INFO,
+    format = '%(asctime)s - %(levelname)s - %(message)s'
 )
-logger = structlog.get_logger()
+
+logger = logging.getLogger(__name__)
 
 def get_error_details(e:Exception) -> Dict:
     return  {
@@ -50,11 +48,20 @@ class ModelParameters(BaseModel):
             raise ValueError(f"Parameter must be between 0 and 1")
         return v
 
+class ModelMetadata(BaseModel):
+    """Model metadata information"""
+    name: str
+    path: Path
+    size: int
+    created_at: datetime
+    last_verified: Optional[datetime] = None
+    performance_metrics: Dict[str, float] = {}
+
 class OllamaConfig(BaseSettings):
     """Configuration settings for Ollama verification"""
     # Server Configuration
     base_url: str = "http://localhost:11434"
-    timeout: float = 30.0
+    timeout: float = 100.0
     max_retries: int = 3
 
     # Directory Paths
@@ -70,14 +77,14 @@ class OllamaConfig(BaseSettings):
     log_format: str = "json"
 
     # Model params
-    model_parameters: ModelParameters = ModelParameters()
+    llm_params: ModelParameters = ModelParameters()
 
     # Health Checks config
     health_check_interval: int = 60 # Seconds
     min_disk_space_pct: int = 10 # minimum free disk space percentage
 
     class Config:
-        env_perfix = "OLLAMA_"
+        env_prefix = "OLLAMA_"
         env_nested_delimiter = "__"
 
         @classmethod
@@ -103,14 +110,14 @@ def load_config() -> OllamaConfig:
 
         # Configure logging level
         logger.info(
-            "configuration_loaded",
-            base_url=config.base_url,
-            models_dir=str(config.models_dir),
-            modelfiles_dir=str(config.modelfiles_dir)
+            f"✅ Configuration loaded successfully\n"
+            f"  - base_url: {config.base_url}\n"
+            f"  - models_dir: {str(config.models_dir)}\n"
+            f"  - modelfiles_dir: {str(config.modelfiles_dir)}"
         )
         return config
     except Exception as e:
-        logger.error("load_config_failed", error=str(e), exc_info=True)
+        logger.error(f"❌ Loading configuration failed. Error : {get_error_details(e)}")
         raise
 
 class MetricsCollector:
@@ -158,7 +165,7 @@ class HealthCheck:
             free_pct = (free/total) * 100
             return free_pct >= self.config.min_disk_space_pct
         except Exception as e:
-            logger.error("disk_space_check_failed", error=get_error_details(e))
+            logger.error(f"❌ Disk space check failed. Error: {str(get_error_details(e))}")
             return False
     
     async def check_ollama_server(self) -> bool:
@@ -171,7 +178,7 @@ class HealthCheck:
                 )
                 return response.status_code == 200
         except Exception as e:
-            logger.error("check_ollama_server_failed", error=get_error_details(e))
+            logger.error(f"❌ Check ollama server failed. Error:{str(get_error_details(e))}")
             return False
 
     async def should_check_health(self) -> bool:
@@ -192,33 +199,40 @@ class HealthCheck:
             "modelfiles_directory": self.config.modelfiles_dir.exists(),
             "disk_space": await self.check_disk_space()
         }
+        self.last_check = datetime.now()
+        self.last_status = status
         return status
 
 class OllamaVerifier:
     """Verify Ollama installation and model availability"""
 
-    def __init__(
-        self,
-        base_url: str = "http://localhost:11434",
-        models_dir: Optional[str] = None,
-        modelfiles_dir: Optional[str] = None,
-    ):
+    def __init__(self, config:OllamaConfig):
         """Initialize verifier with Ollama API URL and directory paths"""
-        self.base_url = base_url.rstrip('/')
-        self.client = httpx.AsyncClient(timeout=30.0)
-
-        # Set up directory paths
-        self.models_dir = Path(models_dir or Path.home() / "Documents" / "models" )
-        self.modelfiles_dir = Path(modelfiles_dir or Path(__file__).parent / "modelfiles")
+        self.config = config
+        self.client = httpx.AsyncClient(timeout=config.timeout)
+        self.metrics = MetricsCollector()
+        self.health = HealthCheck(config)
+        self.verification_callbacks: List[Callable[[str, bool], Awaitable[None]]] = []
 
         # Ensure modelfiles directory exists
-        self.modelfiles_dir.mkdir(parents=True, exist_ok=True)
+        self.config.modelfiles_dir.mkdir(parents=True, exist_ok=True)
 
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.client.aclose()
+
+    @lru_cache(maxsize=32)
+    async def get_model_metadata(self, model_path: Path) -> ModelMetadata:
+        """"Get cached model metadata"""
+        stats = model_path.stat()
+        return ModelMetadata(
+            name = model_path.stem.split('-')[0].lower(),
+            path = model_path,
+            size = stats.st_size,
+            created_at = datetime.fromtimestamp(stats.st_birthtime)
+        )
 
     def _create_modelfile_content(self, model_path: Path) -> str:
         """Create content for a ModelFile with specific configurations"""
@@ -250,17 +264,17 @@ TEMPLATE \"""
     
     async def _save_modelfile(self, model_name:str, content:str)->Path:
         """Save a Modelfile to the modelfile directory"""
-        modelfile_path = self.modelfiles_dir / f"Modelfile.{model_name}"
+        modelfile_path = self.config.modelfiles_dir / f"Modelfile.{model_name}"
         modelfile_path.write_text(content)
         logger.info(f"📝 Created Modelfile at: {modelfile_path}")
         return modelfile_path
     
     async def _get_available_gguf_models(self) -> List[Tuple[str, Path]]:
         """Get all GGUF models from the models directory"""
-        if not self.models_dir.exists():
-            logger.error(f"❌ Models directory not found: {self.models_dir}")
+        if not self.config.models_dir.exists():
+            logger.error(f"❌ Models directory not found: {self.config.models_dir}")
             return []
-        gguf_files = list(self.models_dir.glob("*.gguf"))
+        gguf_files = list(self.config.models_dir.glob("*.gguf"))
         models = []
         for path in gguf_files:
             # Creating a simplified model name from the filename
@@ -268,16 +282,16 @@ TEMPLATE \"""
             models.append((model_name, path))
 
         if models:
-            logger.info(f"📦 Found {len(models)} GGUF model(s) in {self.models_dir}")
+            logger.info(f"📦 Found {len(models)} GGUF model(s) in {self.config.models_dir}")
         else:
-            logger.warning(f" No GGUF models found in {self.models_dir}")
+            logger.warning(f" No GGUF models found in {self.config.models_dir}")
 
         return models
 
     async def verify_ollama_connection(self) -> bool:
         """Verify basic connection to Ollama"""
         try:
-            response = await self.client.get(f"{self.base_url}/api/tags")
+            response = await self.client.get(f"{self.config.base_url}/api/tags")
             response.raise_for_status()
             logger.info("✅ Successfully connected to Ollama")
             return True
@@ -285,36 +299,65 @@ TEMPLATE \"""
             logger.error(f"❌ Failed to connect to Ollama: {str(e)}")
             return False
 
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
     async def verify_model(self, model_name: str) -> bool:
-        """Verify specific model functionality"""
+        """Verify specific model functionality with retries"""
         try:
-            test_prompt = "Respond with 'OK' if you can process this message"
-            response = await self.client.post(
-                f"{self.base_url}/api/generate",
-                json = {
-                    "model":model_name,
-                    "prompt":test_prompt,
-                    "stream":False
-                }
-            )
-            response.raise_for_status()
+            with self.metrics.verification_duration.labels(model_name).time():
+                response = await self.client.post(
+                    f"{self.config.base_url}/api/generate",
+                    json = {
+                        "model":model_name,
+                        "prompt":"System check: Respond with 'OK' if functioning",
+                        "stream":False
+                    }
+                )
+                response.raise_for_status()
 
-            result = response.json()
-            if 'response' in result:
-                logger.info(f"✅ Successfully tested model: {model_name}")
-                return True
+                result = response.json()
+                success = bool('response' in result and result['response'].strip())
+                self.metrics.verification_attempts.labels(
+                    model_name = model_name,
+                    status = "success" if success else "failure"
+                ).inc()
+                if success:
+                    logger.info(f"✅ Successfully tested model: {model_name}")
+                    return success
 
-            logger.warning(f"⚠️  Model {model_name} response format unexpected")
-            return False
+                logger.warning(f"⚠️  Model {model_name} response format unexpected")
+                return success
 
         except Exception as e:
             error_details = get_error_details(e)
             logger.error(f"❌ Failed to verify model {model_name}: {error_details}")
-            return False
+            self.metrics.verification_attempts.labels(
+                model_name = model_name,
+                status = "error"
+            ).inc()
+            raise
+
+    async def _trigger_callbacks(self, model_name: str, success: bool):
+        """Trigger verification completion callbacks"""
+        for callback in self.verification_callbacks:
+            try:
+                await callback(model_name, success)
+            except Exception as e:
+                logger.error(
+                    "❌ Callback failed\n"
+                    f" - model: {model_name}\n"
+                    f" - error: {str(get_error_details(e))}"
+                )
 
     async def verify_custom_model(self, model_name: str, model_path: Path) -> bool:
         """Verify custom model availability and functionality"""
         try:
+            # Get/update metadata
+            metadata = await self.get_model_metadata(model_path)
+
             # Generate and save modelfile
             modelfile_content = self._create_modelfile_content(model_path)
             modelfile_path = await self._save_modelfile(model_name, modelfile_content)
@@ -322,18 +365,68 @@ TEMPLATE \"""
             # Create/Update model in Ollama
             logger.info(f"🏗️ Creating/Updating model: {model_name} :: modelfile_path: {modelfile_path}")
             response = await self.client.post(
-                f"{self.base_url}/api/create",
+                f"{self.config.base_url}/api/create",
                 json = {
                     "name": model_name,
                     "modelfile": modelfile_content
                 }
             )
-            response.raise_for_status
-            return await self.verify_model(model_name)
+            response.raise_for_status()
+            
+            # Verify the model
+            success = await self.verify_model(model_name)
+
+            # Update metadata
+            metadata.last_verified = datetime.now()
+
+            # Trigger callbacks
+            await self._trigger_callbacks(model_name, success)
+
+            return success
         except Exception as e:
             error_details = get_error_details(e)
-            logger.error(f"❌ Failed to verify custom model {model_name}: {error_details}")
+            logger.error(
+                "❌ Failed to verify custom model\n"
+                f"  - model_name: {model_name}\n" 
+                f"  - error: {error_details}"
+            )
             return False
+
+    def on_verification_complete(self, callback: Callable[[str, bool], Awaitable[None]]):
+        """Register a verification completion callback"""
+        self.verification_callbacks.append(callback)
+
+    async def verify_all_models(self) -> Dict[str, bool]:
+        """Verify all models in parallel"""
+        try:
+            # Get all GGUF models
+            models = await self._get_available_gguf_models()
+            if not models: return {}
+            async with asyncio.TaskGroup() as group:
+                tasks = [
+                    group.create_task(self.verify_custom_model(name, path))
+                    for name, path in models
+                ]
+            
+            results = {}
+            for model, task in zip(models, tasks):
+                try:
+                    result = task.result()
+                    results[model[0]] = result
+                except Exception as e:
+                    logger.error(f"❌ Model {model[0]} verification failed with exception: {get_error_details(e)}")
+                    results[model[0]] = False
+
+            success_counts = sum(results.values())
+            logger.info(
+                "✅ Verification complete\n"
+                f"  - + total_models = {len(models)}\n"
+                f"  - ✓ successful = {success_counts}"
+            )
+            return results
+        except Exception as e:
+            logger.error(f"❌ Bulk verification failed. Error: {str(get_error_details(e))}")
+            return {}
     
     async def test_model_performance(self, model_name:str) -> Dict:
         """Test model performance with resume-related prompts"""
@@ -351,9 +444,9 @@ TEMPLATE \"""
 
         for prompt in test_prompts:
             try:
-                start_time = asyncio.get_event_loop().time()
+                start_time = time.perf_counter()
                 response = await self.client.post(
-                    f"{self.base_url}/api/generate",
+                    f"{self.config.base_url}/api/generate",
                     json = {
                         "model": model_name,
                         "prompt": prompt,
@@ -361,7 +454,7 @@ TEMPLATE \"""
                     }
                 )
                 response.raise_for_status()
-                end_time = asyncio.get_event_loop().time()
+                end_time = time.perf_counter()
                 response_time = end_time - start_time
 
                 result = response.json()
@@ -390,9 +483,36 @@ async def main():
         config = load_config()
         if config.metrics_enabled:
             start_http_server(config.metric_port)
-            logger.info("metrics_server_started", port=config.metric_port)
+            logger.info(f"💻 Metric server started on port: {config.metric_port}")
+
+        async with OllamaVerifier(config) as verifier:
+            # Check basic connection
+            if not await verifier.verify_ollama_connection():
+                logger.error("❌ Cannot proceed: Ollama connection failed")
+                return 1
+
+            # Check system health
+            health_status = await verifier.health.check_system_health()
+            if not all(health_status.values()):
+                logger.error(f"❌ Health check failed. Status={health_status}")
+                return 1
+            
+            results = await verifier.verify_all_models()
+
+            # Log summary
+            success_counts = sum(results.values())
+            logger.info(
+                "📊 Verification summary\n"
+                f"  - + total = {len(results)}\n"
+                f"  - ✓ successful = {success_counts}\n"
+                f"  - ✗ failed = {len(results) - success_counts}"
+            )
+
+        return 0 if success_counts > 0 else 1
+
     except Exception as e:
-        logger.error("main_executation_failed", error=get_error_details(e), exc_info=True)
+        logger.error(f"❌ Main execution failed. Error: {str(get_error_details(e))}")
+        return 1
 
 if __name__ == "__main__":
     try:
@@ -404,3 +524,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"❌ Unexpected error: {str(e)}")
         exit(1)
+
