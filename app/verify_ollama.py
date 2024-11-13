@@ -396,38 +396,6 @@ TEMPLATE \"""
         """Register a verification completion callback"""
         self.verification_callbacks.append(callback)
 
-    async def verify_all_models(self) -> Dict[str, bool]:
-        """Verify all models in parallel"""
-        try:
-            # Get all GGUF models
-            models = await self._get_available_gguf_models()
-            if not models: return {}
-            async with asyncio.TaskGroup() as group:
-                tasks = [
-                    group.create_task(self.verify_custom_model(name, path))
-                    for name, path in models
-                ]
-            
-            results = {}
-            for model, task in zip(models, tasks):
-                try:
-                    result = task.result()
-                    results[model[0]] = result
-                except Exception as e:
-                    logger.error(f"❌ Model {model[0]} verification failed with exception: {get_error_details(e)}")
-                    results[model[0]] = False
-
-            success_counts = sum(results.values())
-            logger.info(
-                "✅ Verification complete\n"
-                f"  - + total_models = {len(models)}\n"
-                f"  - ✓ successful = {success_counts}"
-            )
-            return results
-        except Exception as e:
-            logger.error(f"❌ Bulk verification failed. Error: {str(get_error_details(e))}")
-            return {}
-    
     async def test_model_performance(self, model_name:str) -> Dict:
         """Test model performance with resume-related prompts"""
         test_prompts = [
@@ -474,6 +442,54 @@ TEMPLATE \"""
         
         return results
 
+    async def verify_and_test_model(self, model_name:str, model_path:Path) -> Dict:
+        """Verify and test a single model, returning the result"""
+        result = {
+            "model": model_name,
+            "status": "",
+            "performance": None 
+        }
+
+        try:
+            # Verifying and testing model
+            logger.info(f"\n🔍 Verifying model: {model_name}")
+            if await self.verify_custom_model(model_name, model_path):
+                performance = await self.test_model_performance(model_name)
+                result["status"] = "✅ Passed"
+                result["performance"] = performance
+            else:
+                result["status"] = "❌ Failed"
+
+        except Exception as e:
+            logger.error(f"❌ Model {model_name} verification failed with exception: {get_error_details(e)}")
+            result["status"] = "❌ Failed"
+
+        return result
+
+    async def verify_all_models(self) -> List[Dict]:
+        """Verify all models in parallel"""
+        try:
+            # Get all GGUF models
+            models = await self._get_available_gguf_models()
+            if not models: 
+                logger.error("❌ No models found to verify")
+                return []
+
+            async with asyncio.TaskGroup() as group:
+                tasks = [
+                    group.create_task(self.verify_and_test_model(name, path))
+                    for name, path in models
+                ]
+            results = [
+                task.result() for task in tasks
+            ]
+            return results
+        except Exception as e:
+            logger.error(f"❌ Bulk verification failed. Error: {str(get_error_details(e))}")
+            return []
+    
+
+
 
 async def main():
     """Main verification flow"""
@@ -498,16 +514,24 @@ async def main():
                 return 1
             
             results = await verifier.verify_all_models()
-
+            
+            if not results:
+                logger.error("❌ No models were verified")
+                return 1
             # Log summary
-            success_counts = sum(results.values())
-            logger.info(
-                "📊 Verification summary\n"
-                f"  - + total = {len(results)}\n"
-                f"  - ✓ successful = {success_counts}\n"
-                f"  - ✗ failed = {len(results) - success_counts}"
-            )
+            logger.info("📊 Verification summary\n")
+            for result in results:
+                logger.info(f"Model: {result['model']}")
+                logger.info(f"Status: {result['status']}")
+                if result['performance']:
+                    perf = result['performance']
+                    logger.info(
+                        f"Performance:\n"
+                            f"  - Success rate: {perf['successful_test']/perf['total_tests']}\n"
+                            f"  - Average response time: {perf['average_response_times']:.2f}s"
+                    )
 
+        success_counts = sum(1 for r in results if r['status'].startswith('✅'))
         return 0 if success_counts > 0 else 1
 
     except Exception as e:
