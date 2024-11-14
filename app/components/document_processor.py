@@ -1,3 +1,4 @@
+from ..verify_ollama import get_error_details
 import pypdf
 import re
 import logging
@@ -51,7 +52,39 @@ class DocumentParser:
             self.nlp = spacy.load("en_core_web_sm")
 
     def parse(self, file_path:Union[str, Path]) -> Dict[str, str]:
-        return {}
+        """
+        Main parsing interface that handles different file formats
+
+        Args:
+            file_path: Path to the document file
+
+        Returns:
+            Dictionary containing structured document section
+        """
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        file_ext = file_path.suffix.lower()
+        if file_ext not in self.supported_formats:
+            raise ValueError(f"Unsupported file format: {file_ext}")
+
+        try:
+            # Extract raw text using format-specific parser
+            raw_text = self.supported_formats[file_ext](file_path)
+
+            # Process and structure the text
+            structured_content = self._structure_content(raw_text)
+
+            # Validate the parsed content
+            self._validate_parsed_content(structured_content)
+
+            return structured_content
+
+        except Exception as e:
+            logger.error(f"❌ Error parsing documents: {get_error_details(e)}")
+            raise
+
 
     def _parse_pdf(self, file_path:Path) -> str:
         return ""
@@ -74,8 +107,43 @@ class DocumentParser:
         """
         # Clean and normalize text
         cleaned_text = self._clean_text(text)
-        print(cleaned_text)
-        return {}
+
+        # Detect sections
+        sections = self._detect_sections(cleaned_text)
+
+        #Initialize structured content dict with empty sections
+        structured_content = {
+            "header": '',
+            "summary": '',
+            "experience": '',
+            "education": '',
+            "skills": '',
+            "certifications": '',
+            "projects": '',
+            "other": '',
+        }
+
+        sorted_sections = sorted(sections, key=lambda x:x.start_idx)
+
+        for i, section in enumerate(sorted_sections):
+            # Determine end of section
+            if i < len(sorted_sections) - 1:
+                content = cleaned_text[section.start_idx:sorted_sections[i+1].start_idx].strip()
+            else:
+                content = cleaned_text[section.start_idx:].strip()
+
+            # Remove section header from content
+            content = self._remove_section_header(content)
+
+            # Store in appropriate section
+            if section.name in structured_content:
+                structured_content[section.name] = content
+            else:
+                structured_content['other'] += f"\n{content}" if structured_content['other'] else content
+
+
+
+        return structured_content
 
     def _detect_sections(self, text:str) -> List[Section]:
         """
@@ -116,8 +184,36 @@ class DocumentParser:
 
         return sections
 
-    def _validate_parsed_content(self):
-        pass
+    def _validate_parsed_content(self, content:Dict[str, str]) -> None:
+        """
+        Validate parsed content structure and content
+
+        Args:
+            content: Structured content dictionary to validate
+
+        Raises:
+            ValueError: If content structure is invalid
+        """
+        # Check for required sections
+        required_sections = {'header','summary','experience','education','skills'}
+        missing_sections = required_sections - set(content.keys())
+        if missing_sections:
+            logger.warning(f"⚠️  Missing required sections: {missing_sections}")
+
+        # Check for empty sections
+        empty_sections = [section for section, text in content.items() if not text.strip()]
+        if empty_sections:
+            logger.warning(f"⚠️  Empty sections detected: {empty_sections}")
+
+        # Basic content validation
+        for section, text in content.items():
+            if not isinstance(text, str):
+                raise ValueError(f"Invalid content type in section '{section}': expected str, got {type(text)}")
+
+            # Check for potential parseing errors (e.g, garbage characters)
+            if re.search(r'[^\100-\x7f]+', text):
+                logger.warning(f"⚠️  Non-ACII characters detected in section '{section}'")
+
 
     def _verify_section_header(self, text: str) -> bool:
         """
@@ -173,5 +269,19 @@ class DocumentParser:
         text = re.sub(r'^\s*(?:Page\s+)?\d+[\.\s]*$', '\n', text, flags=re.MULTILINE)
 
         return text.strip()
+
+    def _remove_section_header(self, text:str) -> str:
+        """
+        Remove section header from section content
+
+        Args:
+            text: Section text including header
+
+        Returns:
+            Section content without header
+        """
+        lines = text.split("\n", 1)
+        return lines[1].strip() if len(lines) > 1 else lines[0].strip()
+
 
 

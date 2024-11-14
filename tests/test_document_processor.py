@@ -108,3 +108,9 @@ Test Education
         assert '▫' not in cleaned
         assert 'Page 1' not in cleaned
         assert cleaned.count('\n') < dirty_text.count('\n')
+
+    def test_invalid_file_format(self, parser):
+        """Test handling of invalid formats"""
+        with tempfile.NamedTemporaryFile(suffix='.invalid') as temp_file:
+            with pytest.raises(ValueError, match="Unsupported file format"):
+                parser.parse(temp_file.name)

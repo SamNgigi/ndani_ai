@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from pydantic import BaseModel, field_validator 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from tenacity import retry, stop_after_attempt, wait_exponential
 from typing import List,Tuple, Dict, Optional, Callable, Awaitable
 from prometheus_client import Counter, Histogram, start_http_server
@@ -83,17 +83,17 @@ class OllamaConfig(BaseSettings):
     health_check_interval: int = 60 # Seconds
     min_disk_space_pct: int = 10 # minimum free disk space percentage
 
-    class Config:
-        env_prefix = "OLLAMA_"
+    model_config = SettingsConfigDict(
+        env_prefix = "OLLAMA_",
         env_nested_delimiter = "__"
-
-        @classmethod
-        def customize_sources(cls, init_settings, env_settings, file_secret_settings):
-            return (
-                init_settings,
-                env_settings,
-                file_secret_settings,
-            )
+    )
+    @classmethod
+    def customize_sources(cls, init_settings, env_settings, file_secret_settings):
+        return (
+            init_settings,
+            env_settings,
+            file_secret_settings,
+        )
     
     @field_validator('models_dir', 'modelfiles_dir')
     def validate_directory(cls, v):
