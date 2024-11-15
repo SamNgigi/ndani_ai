@@ -40,11 +40,24 @@ SKILLS
         yield Path(f.name)
         Path(f.name).unlink()
 
+    def test_parse_txt(self, parser, sample_resume_txt):
+        """Test parsing of text file"""
+        result = parser.parse(sample_resume_txt)
 
-    # def test_parse_txt(self, parser:DocumentParser, sample_resume_txt:Path):
-    #     """Test parsing of text file"""
-    #     result = parser.parse(sample_resume_txt)
-    #     print(result)
+        # Check required section exist
+        assert 'header' in result
+        assert 'summary' in result
+        assert 'experience' in result
+        assert 'education' in result
+        assert 'skills' in result
+
+        # Check content parsing
+        assert 'john@example.com' in result['header'].lower()
+        assert 'software engineer' in result['summary'].lower()
+        assert 'tech corp' in result['experience'].lower()
+        assert 'computer science' in result['education'].lower()
+        assert 'python' in result['skills'].lower()
+
     
     def test_detect_section(self, parser):
         """Test setion detection"""
@@ -114,3 +127,8 @@ Test Education
         with tempfile.NamedTemporaryFile(suffix='.invalid') as temp_file:
             with pytest.raises(ValueError, match="Unsupported file format"):
                 parser.parse(temp_file.name)
+
+    def test_missing_file(self, parser):
+        """Test handling of missing files"""
+        with pytest.raises(FileNotFoundError):
+            parser.parse("nonexistent_file.txt")

@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 class Section:
     """Represents a section in the document"""
     name:str
+    section_header:str
     content:str
     start_idx:int
     end_idx:int
@@ -32,15 +33,18 @@ class DocumentParser:
         }
 
         self.section_patterns = {
-            'header': r'^(?:name|contact|personal\s+information)',
-            'summary': r'^(?:summary|professional\s+summary|profile|objective)',
-            'experience': r'^(?:experience|work\s+experience|employment|work\s+history)',
-            'education': r'^(?:education|academic|qualifications)',
-            'skills': r'^(?:skills|technical\s+skills|competencies)',
-            'certifications': r'^(?:certifications|certificates|accreditations)',
-            'projects': r'^(?:projects|personal\s+projects|professional\s+projects)',
-            'other': r'^(?:additional|interests|volunteer|langauge|references|personal\s+milestones)',
+            'summary': r'\b(?:PROFESSIONAL\s+SUMMARY|SUMMARY|PROFILE|OBJECTIVE)\b:?',
+            'experience': r'\b(?:WORK\s+EXPERIENCE|EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY)\b:?',
+            'education': r'\b(?:EDUCATION|ACADEMIC|QUALIFICATIONS)\b:?',
+            'skills': r'\b(?:SKILLS|TECHNICAL\s+SKILLS|COMPETENCIES)\b:?',
+            'certifications': r'\b(?:CERTIFICATIONS|CERTIFICATES|ACCREDITATIONS)\b:?',
+            'projects': r'\b(?:PROJECTS|PERSONAL\s+PROJECTS|PROFESSIONAL\s+PROJECTS)\b:?',
+            'other': r'\b(?:ADDITIONAL|INTERESTS|VOLUNTEER|LANGUAGE|REFERENCES)\b:?',
         }
+        self.combined_patterns = re.compile(
+            '|'.join(f'(?P<{name}>{pattern})' for name,pattern in self.section_patterns.items()),
+            re.IGNORECASE
+        )
 
         # Load spacy model for text processing
         try:
@@ -75,6 +79,7 @@ class DocumentParser:
 
             # Process and structure the text
             structured_content = self._structure_content(raw_text)
+            # logger.info(f"🔍 structured_content: {structured_content}")
 
             # Validate the parsed content
             self._validate_parsed_content(structured_content)
@@ -93,7 +98,28 @@ class DocumentParser:
         return ""
 
     def _parse_txt(self, file_path:Path) -> str:
-        return ""
+        """
+        Parse plain text documents
+        
+        Args:
+            file_path: Path to the text file
+
+        Returns:
+            Content of the text file
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return file.read()
+        except UnicodeError:
+            # Try different encodings if UTF-8 fails
+            encodings = ['latin-1', 'iso-8859','cp1252']
+            for encoding in encodings:
+                try:
+                    with open(file_path, 'r', encoding=encoding) as file:
+                        return file.read()
+                except UnicodeError:
+                    continue
+            raise ValueError('❌ Unable to decode the text file with supported encodings')
 
     def _structure_content(self, text:str) -> Dict[str, str]:
         """
@@ -107,10 +133,10 @@ class DocumentParser:
         """
         # Clean and normalize text
         cleaned_text = self._clean_text(text)
-
+        # logger.info(f"🔍 cleaned_text: {cleaned_text}")
         # Detect sections
         sections = self._detect_sections(cleaned_text)
-
+        # logger.info(f"🔍 sections: {sections}")
         #Initialize structured content dict with empty sections
         structured_content = {
             "header": '',
@@ -125,25 +151,21 @@ class DocumentParser:
 
         sorted_sections = sorted(sections, key=lambda x:x.start_idx)
 
-        for i, section in enumerate(sorted_sections):
-            # Determine end of section
-            if i < len(sorted_sections) - 1:
-                content = cleaned_text[section.start_idx:sorted_sections[i+1].start_idx].strip()
-            else:
-                content = cleaned_text[section.start_idx:].strip()
-
-            # Remove section header from content
-            content = self._remove_section_header(content)
-
-            # Store in appropriate section
+        for section in sorted_sections:
+                        # Store in appropriate section
             if section.name in structured_content:
-                structured_content[section.name] = content
+                structured_content[section.name] = section.content
             else:
-                structured_content['other'] += f"\n{content}" if structured_content['other'] else content
+                structured_content['other'] += f"\n{section.content}" if structured_content['other'] else section.content
 
 
 
+        # logger.info(f"🔍 structured_content: {structured_content}")
         return structured_content
+
+    def print_sections(self, sections:List[Section]):
+        for section in sections:
+            print(section)
 
     def _detect_sections(self, text:str) -> List[Section]:
         """
@@ -155,34 +177,61 @@ class DocumentParser:
         Returns:
             List of detected sections with their positions
         """
+        
+        # Find all matches of section headings
+        matches = list(self.combined_patterns.finditer(text))
 
         sections = []
-        lines = text.split("\n")
-        current_position = 0
 
-        for line in lines:
-            line_stripped = line.strip().lower()
-            if not line_stripped:
-                current_position += len(line) + 1
-                continue
+        # Handling the header section with personal contact info (content before first matched section)
+        if matches and matches[0].start() > 0:
+            header_content = text[:matches[0].start()]
+            header = Section(
+                name='header',
+                section_header = '',
+                content = header_content.strip(),
+                start_idx = 0,
+                end_idx = matches[0].start()
+            )
+            sections.append(header)
+        elif not matches:
+            # No matches found; entire content is header
+            header = Section(
+                name = 'header',
+                section_header = '',
+                content = text.strip(),
+                start_idx = 0,
+                end_idx = len(text)
+            )
+            sections.append(header)
 
-            for section_name, pattern in self.section_patterns.items():
-                if re.match(pattern, line_stripped, re.IGNORECASE):
-                    # Verify it's actually a header using NLP
-                    if self._verify_section_header(line):
-                        sections.append(
-                            Section(
-                                name = section_name,
-                                content = '',
-                                start_idx = current_position,
-                                end_idx = 0 # Will be set when processing next section
-                            )
-                        )
-                        break
 
-                    current_position += len(line) + 1
 
+        for idx, match in enumerate(matches):
+            name = match.lastgroup
+            section_header = match.group()
+            if self._verify_section_header(section_header.strip()):
+                start_idx = match.end() # Content starts after the section heading
+
+                # Determine the end index
+                if idx + 1 < len(matches):
+                    end_idx = matches[idx + 1].start()
+                else:
+                    end_idx = len(text)
+
+                section_content = text[start_idx:end_idx]
+                sections.append(
+                    Section(
+                        name = name if name else '',
+                        section_header = section_header.strip(),
+                        content = section_content,
+                        start_idx = start_idx,
+                        end_idx = end_idx
+                    )
+                )
+        
         return sections
+
 
     def _validate_parsed_content(self, content:Dict[str, str]) -> None:
         """
@@ -194,6 +243,10 @@ class DocumentParser:
         Raises:
             ValueError: If content structure is invalid
         """
+        # Check found sections
+        found_sections = {section_name for section_name, content in content.items() if content}
+        if found_sections:
+            logger.info(f"ℹ️  Found sections: {found_sections}")
         # Check for required sections
         required_sections = {'header','summary','experience','education','skills'}
         missing_sections = required_sections - set(content.keys())
@@ -203,7 +256,7 @@ class DocumentParser:
         # Check for empty sections
         empty_sections = [section for section, text in content.items() if not text.strip()]
         if empty_sections:
-            logger.warning(f"⚠️  Empty sections detected: {empty_sections}")
+            logger.warning(f" 🔍 Empty sections detected: {empty_sections}")
 
         # Basic content validation
         for section, text in content.items():
@@ -211,8 +264,8 @@ class DocumentParser:
                 raise ValueError(f"Invalid content type in section '{section}': expected str, got {type(text)}")
 
             # Check for potential parseing errors (e.g, garbage characters)
-            if re.search(r'[^\100-\x7f]+', text):
-                logger.warning(f"⚠️  Non-ACII characters detected in section '{section}'")
+            if re.search(r'[^\x00-\x7F]+', text):
+                logger.warning(f"⚠️  Non-ASCII characters detected in section '{section}'")
 
 
     def _verify_section_header(self, text: str) -> bool:
@@ -270,18 +323,7 @@ class DocumentParser:
 
         return text.strip()
 
-    def _remove_section_header(self, text:str) -> str:
-        """
-        Remove section header from section content
 
-        Args:
-            text: Section text including header
-
-        Returns:
-            Section content without header
-        """
-        lines = text.split("\n", 1)
-        return lines[1].strip() if len(lines) > 1 else lines[0].strip()
 
 
 
