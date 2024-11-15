@@ -92,10 +92,52 @@ class DocumentParser:
 
 
     def _parse_pdf(self, file_path:Path) -> str:
-        return ""
+        """
+        Parse PDF documents
+
+        Args:
+            file_path: Path to the PDF file
+
+        Returns:
+            Extracted text from the PDF
+        """
+        try:
+            text = []
+            with open(file_path, 'rb') as file:
+                pdf = pypdf.PdfReader(file)
+                for page in pdf.pages:
+                    text.append(page.extract_text())
+            return '\n'.join(text)
+        except Exception as e:
+            logger.error(f"❌ Error parsing PDF: {get_error_details(e)}")
+            raise
 
     def _parse_docx(self, file_path:Path) -> str:
-        return ""
+        """
+        Parse DOCX documents
+
+        Args:
+            file_path: Path to the DOCX file
+
+        Returns:
+            Extracted text from the DOCX
+        """
+        try:
+            doc = Document(str(file_path))
+
+            # Extract text while preserving formatting
+            text = []
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip(): # Skip empty paragraphs
+                    # Check for heading style
+                    if paragraph.style and paragraph.style.name and paragraph.style.name.startswith('Heading'):
+                        text.append(f"\n{paragraph.text}\n")
+                    else:
+                        text.append(paragraph.text)
+            return '\n'.join(text)
+        except Exception as e:
+            logger.error(f"❌ Error parsing DOCX: {get_error_details(e)}")
+            raise
 
     def _parse_txt(self, file_path:Path) -> str:
         """
