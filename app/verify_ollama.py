@@ -120,6 +120,25 @@ def load_config() -> OllamaConfig:
         logger.error(f"❌ Loading configuration failed. Error : {get_error_details(e)}")
         raise
 
+def _get_available_gguf_models(config: OllamaConfig) -> List[Tuple[str, Path]]:
+    """Get all GGUF models from the models directory"""
+    if not config.models_dir.exists():
+        logger.error(f"❌ Models directory not found: {config.models_dir}")
+        return []
+    gguf_files = list(config.models_dir.glob("*.gguf"))
+    models = []
+    for path in gguf_files:
+        # Creating a simplified model name from the filename
+        model_name = path.stem.split('-')[0].lower() # Take first part before hyphen
+        models.append((model_name, path))
+
+    if models:
+        logger.info(f"📦 Found {len(models)} GGUF model(s) in {config.models_dir}")
+    else:
+        logger.warning(f" No GGUF models found in {config.models_dir}")
+
+    return models
+
 class MetricsCollector:
     """Prometheus metrics collection"""
     def __init__(self, enabled: bool = True):
@@ -269,24 +288,7 @@ TEMPLATE \"""
         logger.info(f"📝 Created Modelfile at: {modelfile_path}")
         return modelfile_path
     
-    async def _get_available_gguf_models(self) -> List[Tuple[str, Path]]:
-        """Get all GGUF models from the models directory"""
-        if not self.config.models_dir.exists():
-            logger.error(f"❌ Models directory not found: {self.config.models_dir}")
-            return []
-        gguf_files = list(self.config.models_dir.glob("*.gguf"))
-        models = []
-        for path in gguf_files:
-            # Creating a simplified model name from the filename
-            model_name = path.stem.split('-')[0].lower() # Take first part before hyphen
-            models.append((model_name, path))
 
-        if models:
-            logger.info(f"📦 Found {len(models)} GGUF model(s) in {self.config.models_dir}")
-        else:
-            logger.warning(f" No GGUF models found in {self.config.models_dir}")
-
-        return models
 
     async def verify_ollama_connection(self) -> bool:
         """Verify basic connection to Ollama"""
@@ -470,7 +472,7 @@ TEMPLATE \"""
         """Verify all models in parallel"""
         try:
             # Get all GGUF models
-            models = await self._get_available_gguf_models()
+            models = _get_available_gguf_models(self.config)
             if not models: 
                 logger.error("❌ No models found to verify")
                 return []

@@ -1,4 +1,4 @@
-from ..verify_ollama import get_error_details
+from verify_ollama import get_error_details
 import pypdf
 import re
 import logging
@@ -33,13 +33,13 @@ class DocumentParser:
         }
 
         self.section_patterns = {
-            'summary': r'\b(?:PROFESSIONAL\s+SUMMARY|SUMMARY|PROFILE|OBJECTIVE)\b:?',
-            'experience': r'\b(?:WORK\s+EXPERIENCE|EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY)\b:?',
+            'summary': r'\b(?:PROFESSIONAL\s+SUMMARY|SUMMARY|PROFILE|OBJECTIVE|BIO\s+SUMMARY)\b:?',
+            'experience': r'\b(?:WORK\s+EXPERIENCE|EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|PROFESSIONAL\s+EXPERIENCE)\b:?',
             'education': r'\b(?:EDUCATION|ACADEMIC|QUALIFICATIONS)\b:?',
-            'skills': r'\b(?:SKILLS|TECHNICAL\s+SKILLS|COMPETENCIES)\b:?',
+            'skills': r'\b(?:SKILLS|TECHNICAL\s+SKILLS|COMPETENCIES|TECH\s+STACK)\b:?',
             'certifications': r'\b(?:CERTIFICATIONS|CERTIFICATES|ACCREDITATIONS)\b:?',
             'projects': r'\b(?:PROJECTS|PERSONAL\s+PROJECTS|PROFESSIONAL\s+PROJECTS)\b:?',
-            'other': r'\b(?:ADDITIONAL|INTERESTS|VOLUNTEER|LANGUAGE|REFERENCES)\b:?',
+            'other': r'\b(?:ADDITIONAL|INTERESTS|VOLUNTEER|LANGUAGE|REFERENCES|PERSONAL\s+MILESTONES)\b:?',
         }
         self.combined_patterns = re.compile(
             '|'.join(f'(?P<{name}>{pattern})' for name,pattern in self.section_patterns.items()),
