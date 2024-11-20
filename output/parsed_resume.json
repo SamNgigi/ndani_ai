@@ -1,0 +1,155 @@
+{
+  "BIOSUMMARY": {
+    "text": "For the past five years, I’ve worked across data science, machine learning, full-stack software engineering and highly technical Salesforce development, solving complex problems and delivering impactful, scalable solutions. At PyBootcamp School, I progressed from student technical mentor to tech lead, where I implemented machine learning models that increased student retention, student NPS and built automated systems that boosted operational efficiency by over 70%, allowing revenue capture and savings of over $1.5 million dollars. I thrived in balancing technical leadership with hands-on work, from coding predictive models to optimising cloud infrastructure.",
+    "foundingStory": {
+      "app": "Hai",
+      "description": "a personal finance app that helps users automatically track their spending and save. As the sole developer, I've managed the entire technical stack—designing the backend, building the frontend, and handling cloud infrastructure.",
+      "nextSteps": "The app, now in the live user testing phase on the Google Play Store, reflects my passion for developing user-centric products and exploring their commercial potential."
+    },
+    "CareerGoals": {
+      "lookingFor": "opportunities where I can continue to lead technically while remaining hands-on with engineering.",
+      "focus": "roles in fintech, AI, or data-driven startups that value innovation and scalability.",
+      "longTermGoals": "grow into a deeply technical machine learning software engineer and tech leader, all while continuing to code, design algorithms and shape cutting-edge products."
+    }
+  },
+  "TECHSTACK": [
+    {
+      "name": "MachineLearning/DeepLearning (LLMs)",
+      "technologies": [
+        "AzureML",
+        "MLFlow",
+        "Llama.cpp",
+        "LangChain",
+        "LlamaIndex",
+        "Ollama",
+        "TensorFlow",
+        "Keras",
+        "PyTorch",
+        "ChromaDB (Vector Database)"
+      ]
+    },
+    {
+      "name": "Data Science & Big Data",
+      "technologies": [
+        "Pandas",
+        "Scikit-learn",
+        "NumPy",
+        "SQL",
+        "Streamlit",
+        "Tableau",
+        "Google Big Query"
+      ]
+    },
+    {
+      "name": "Software Engineering",
+      "technologies": [
+        "Backend (Python Django/Flask, Java, C++)",
+        "Android (Java, Kotlin)",
+        "Frontend (JavaScript, React with Redux, Angular)"
+      ]
+    },
+    {
+      "name": "Open Source LLM Models",
+      "technologies": [
+        "Mistral-7b-Instruct",
+        "llama 3.1-8b",
+        "CodeLlama-13b-instruct"
+      ]
+    },
+    {
+      "name": "Database & DevOps",
+      "technologies": [
+        "PostgreSQL",
+        "MySQL",
+        "Heroku",
+        "Docker",
+        "Jenkins"
+      ]
+    },
+    {
+      "name": "Salesforce",
+      "technologies": [
+        "Advanced Flows",
+        "Apex",
+        "SOQL"
+      ]
+    },
+    {
+      "name": "Methodologies",
+      "technologies": [
+        "TDD",
+        "BDD",
+        "DDD",
+        "OOP",
+        "Agile"
+      ]
+    },
+    {
+      "name": "Cloud Services",
+      "technologies": [
+        "GCP",
+        "AWS (Redshift, S3 buckets)",
+        "Databrick"
+      ]
+    }
+  ],
+  "PROFESSIONALEXPERIENCE": [
+    {
+      "jobTitle": "Founder & Full-Stack Software Engineer",
+      "company": "Hai, Kigali, Rwanda",
+      "dates": "April 2024–present",
+      "description": "Ted is the sole developer behind Hai, as a personal finance app helping users track expenses and identify savings opportunities."
+    },
+    {
+      "jobTitle": "Tech & Data Lead",
+      "company": "PyBootcamp School, Kigali, Rwanda",
+      "dates": "Feb 2022–March 2024",
+      "description": "Led critical technical projects, focusing on hands-on development, data science, and machine learning work to drive organisational impact."
+    },
+    {
+      "jobTitle": "Data Engineer | Data Scientist",
+      "company": "PyBootcamp School, Kigali, Rwanda",
+      "dates": "Mar 2021–Mar 2022",
+      "description": "Built and deployed a highly accurate (90%) NPS prediction model in Salesforce using its in-built Einstein Analytics Prediction builder, enabling proactive student retention strategies and enhancing overall student support services."
+    },
+    {
+      "jobTitle": "Data Scientist",
+      "company": "HelloTractor, Kigali, Rwanda",
+      "dates": "Jun 2020–Sept 2020",
+      "description": "Performed statistical validation of trips data from the tractor fleet, ensuring accuracy in tracking acreage covered and overall performance."
+    },
+    {
+      "jobTitle": "Data Science Intern",
+      "company": "African Leadership Network (ALN), Kigali, Rwanda",
+      "dates": "Oct 2019–Nov 2019",
+      "description": "Automated data collection processes with a custom Python webscraper, improving database update efficiency by 5%"
+    },
+    {
+      "jobTitle": "Android Development Technical Mentor",
+      "company": "MTN Digital Academy, PyBootcamp School, Kigali, Rwanda",
+      "dates": "Jan 2019–July 2019",
+      "description": "Led the pioneering Android development class, teaching Java and mobile app development to MTN Digital Academy students, achieving a 4.9/5 mentor satisfaction rating."
+    }
+  ],
+  "EDUCATION": [
+    {
+      "name": "Data Science Launchpad, Data Science & Machine Learning, ALX",
+      "dates": "2019-"
+    },
+    {
+      "name": "Software Immersive Full-Stack Developer, PyBootcamp School",
+      "dates": "2017 - 2018"
+    }
+  ],
+  "LICENCES&CERTIFICATIONS": [
+    {
+      "text": "Salesforce Certified Platform Developer I - Salesforce"
+    },
+    {
+      "text": "Salesforce Certified Administrator (SCA) - Salesforce"
+    },
+    {
+      "text": "Microsoft Certified: Azure Data Scientist Associate - Microsoft"
+    }
+  ]
+}

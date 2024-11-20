@@ -29,7 +29,7 @@ async def get_llm_response():
             f"{config.base_url}/api/generate",
             json = {
                 "model": 'codellama',
-                "prompt": 'what is your purpose?',
+                "prompt": 'Hello world program in modern C++?',
                 "stream": False
             }
         )
