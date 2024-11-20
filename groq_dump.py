@@ -30,7 +30,7 @@ def _parse_pdf(file_path:Union[str, Path]) -> str:
         raise
 
 
-pdf_text = _parse_pdf('data/jn_resume.pdf')
+pdf_text = _parse_pdf('data/sn_resume.pdf')
 
 # pp.pprint(pdf_text)
 
@@ -38,7 +38,7 @@ pdf_text = _parse_pdf('data/jn_resume.pdf')
 client = AsyncGroq(api_key = groq_key)
 
 async def parse_resume(pdf_text:str):
-    mxTokens = 10000
+    mxTokens = 30000
     completion = await client.chat.completions.create(
         model="mixtral-8x7b-32768",
         messages=[
@@ -55,11 +55,11 @@ async def parse_resume(pdf_text:str):
   "contact_details":{{
     "name":"",
     "email": "",
-    "linkedIn":"",
+    "roles": ["", "", ""],
+    "phone_number"
     "github":""
   }},
-  "summary": "",
-
+  "bio_summary": "", 
   "skill_or_tech_stack": [
     {{
     "competency":"",
@@ -92,8 +92,8 @@ async def parse_resume(pdf_text:str):
     }}
   ],
   "licences_certifications": [
-    "cert 1",
-    "cert 2"
+    "",
+    ""
   ],
   "personal_interest": {{
     "projects": [
@@ -106,12 +106,21 @@ async def parse_resume(pdf_text:str):
             "description":""
         }}
     ],
-    "interests": ["interest 1", "interest 2"],
+    "interests": ["", ""],
     "milestones": [
-        "milestone 1",
-        "milestone 2"
+        "",
+        ""
     ]
   }}
+  "references": [
+    {{
+        "name": "",
+        "role": "title and company",
+        "phone_number": "",
+        "email": ""
+    }},
+    {{}}
+  ]
 }}
                     ###END OF FORMAT
 
@@ -121,7 +130,7 @@ async def parse_resume(pdf_text:str):
                     Return only a valid JSON dictionary with the extracted information.""".format(pdf_text=pdf_text)
             }
         ],
-        temperature=0.1,
+        temperature=0,
         max_tokens=mxTokens,
         top_p=1,
         # seed=3,
