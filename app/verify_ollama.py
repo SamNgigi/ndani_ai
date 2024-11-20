@@ -4,6 +4,7 @@ import json
 import httpx
 import logging
 import shutil
+import pprint as pp
 from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -272,12 +273,12 @@ Your role is to help improve resumes for better job application success rates wh
 \"""
 
 # Template for consistent response format
-TEMPLATE \"""
-{{if .System}}{{.System}}{{end}}
-
-{{if .Prompt}}{{.Prompt}}{{end}}
-
-{{if .Response}}{{.Response}}{{end}}
+TEMPLATE \"""{{ if .System }}<|start_header|>system<|end_header|>
+{{ .System }}<|end_of_text|>{{ end }}
+{{ if .Prompt }}<|start_header|>user<|end_header|>
+{{ .Prompt }}<|end_of_text|>{{ end }}
+<|start_header|>assistant<|end_header|>
+{{ .Response }}<|end_of_text|>
 \"""
 """
     
@@ -322,6 +323,7 @@ TEMPLATE \"""
 
                 result = response.json()
                 success = bool('response' in result and result['response'].strip())
+                pp.pprint(result)
                 self.metrics.verification_attempts.labels(
                     model_name = model_name,
                     status = "success" if success else "failure"
@@ -359,10 +361,14 @@ TEMPLATE \"""
         try:
             # Get/update metadata
             metadata = await self.get_model_metadata(model_path)
+            modelfile_path = self.config.modelfiles_dir / f"Modelfile.{model_name}"
 
+            if modelfile_path.exists() and modelfile_path.stat().st_size > 0:
+                modelfile_content = modelfile_path.read_text()
+            else:
             # Generate and save modelfile
-            modelfile_content = self._create_modelfile_content(model_path)
-            modelfile_path = await self._save_modelfile(model_name, modelfile_content)
+                modelfile_content = self._create_modelfile_content(model_path)
+                modelfile_path = await self._save_modelfile(model_name, modelfile_content)
 
             # Create/Update model in Ollama
             logger.info(f"🏗️ Creating/Updating model: {model_name} :: modelfile_path: {modelfile_path}")

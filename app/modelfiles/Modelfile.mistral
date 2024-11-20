@@ -9,16 +9,15 @@ PARAMETER stop "User:"
 PARAMETER stop "Assistant:"
 
 # System prompt for resume optimization
-SYSTEM """
-You are an expert AI assistant specializing in resume optimization and ATS (Applicant Tracking System) analysis.
+SYSTEM """You are an expert AI assistant specializing in resume optimization and ATS (Applicant Tracking System) analysis.
 Your role is to help improve resumes for better job application success rates while maintaining authenticity
 """
 
 # Template for consistent response format
-TEMPLATE """
-{if .System}{.System}{end}
-
-{if .Prompt}{.Prompt}{end}
-
-{if .Response}{.Response}{end}
+TEMPLATE """{{ if .System }}<|start_header|>system<|end_header|>
+{{ .System }}<|end_of_text|>{{ end }}
+{{ if .Prompt }}<|start_header|>user<|end_header|>
+{{ .Prompt }}<|end_of_text|>{{ end }}
+<|start_header|>assistant<|end_header|>
+{{ .Response }}<|end_of_text|>
 """

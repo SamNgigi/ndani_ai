@@ -183,7 +183,7 @@ class ResumeOptimizerApp:
         # Handle file uploads
         resume_file, job_desc_file = self.render_file_upload()
 
-        if resume_file and job_desc_file:
+        if resume_file:
             if st.button("🚀 Optimize Resume"):
                 with st.spinner("Processing..."):
                     # Process files. Uses dummy/mock data for now
@@ -194,12 +194,12 @@ class ResumeOptimizerApp:
                         st.session_state.result = result
                         
                         # Display result
-                        self.render_results(result)
+                        # self.render_results(result)
                     else:
-                        st.error("Error processing file. Please try again.")
+                        st.error("Error processing provided files. Result was empty. Please try again.")
         # Display results if already proceed
-        elif st.session_state.processing_state == "completed":
-            self.render_results(st.session_state.result)
+        # elif st.session_state.processing_state == "completed":
+            # self.render_results(st.session_state.result)
         
 
 if __name__ == "__main__":
