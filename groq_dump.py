@@ -30,7 +30,7 @@ def _parse_pdf(file_path:Union[str, Path]) -> str:
         raise
 
 
-pdf_text = _parse_pdf('data/test_cv_content.pdf')
+pdf_text = _parse_pdf('data/jn_resume.pdf')
 
 # pp.pprint(pdf_text)
 
@@ -91,10 +91,27 @@ async def parse_resume(pdf_text:str):
       "dates": ""
     }}
   ],
-  "LICENCES&CERTIFICATIONS": [
+  "licences_certifications": [
     "cert 1",
     "cert 2"
-  ]
+  ],
+  "personal_interest": {{
+    "projects": [
+        {{
+            "name":"",
+            "description":""
+        }},
+        {{
+            "name":"",
+            "description":""
+        }}
+    ],
+    "interests": ["interest 1", "interest 2"],
+    "milestones": [
+        "milestone 1",
+        "milestone 2"
+    ]
+  }}
 }}
                     ###END OF FORMAT
 
