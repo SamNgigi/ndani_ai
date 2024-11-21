@@ -5,11 +5,14 @@ import os
 import streamlit as st
 from pathlib import Path
 from typing import Dict, Union
+from dotenv import load_dotenv
 
 from verify_ollama import get_error_details, load_config, _get_available_gguf_models
 
 from components.document_processor import DocumentParser
-from components.resume_processor import ResumeProcessor
+from components.groq_resume_parser import ResumeParser
+
+load_dotenv()
 
 class ResumeOptimizerApp:
     """Main streamlit application for resume optimization"""
@@ -40,8 +43,12 @@ class ResumeOptimizerApp:
 
 
     def initialize_components(self):
-        self.parser = DocumentParser()
-        self.processor = ResumeProcessor()
+        groq_key = os.environ.get("GROQ_API_KEY")
+        project_root = Path(__file__).parent.parent
+        prompt_file = project_root/ "prompts" / "parse_resume_prompt.txt"
+        if not groq_key:
+            raise EnvironmentError("GROQ_API_KEY not set in enviroment variables")
+        self.parser = ResumeParser(api_key=groq_key, parsing_prompt=prompt_file)
 
     def render_sidebar(self) -> Dict:
         """
@@ -113,7 +120,7 @@ class ResumeOptimizerApp:
                 temp_resume.write(resume_file.getbuffer())
                 resume_path = temp_resume.name
 
-                result = await self.processor.process_resume(resume_path)
+                result = await self.parser.groq_parse(resume_path)
                 print(json.dumps(result))
                 return result
         except Exception as e:

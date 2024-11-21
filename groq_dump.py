@@ -38,6 +38,11 @@ pdf_text = _parse_pdf('data/sn_resume.pdf')
 client = AsyncGroq(api_key = groq_key)
 
 async def parse_resume(pdf_text:str):
+    # Read the parse_resume_prompt
+    with open('prompts/parse_resume_prompt.txt', 'r', encoding='utf-8') as prompt:
+        _prompt = prompt.read()
+    parsing_prompt = _prompt.format(pdf_text = pdf_text)
+
     mxTokens = 11000
     completion = await client.chat.completions.create(
         model="mixtral-8x7b-32768",
@@ -48,34 +53,7 @@ async def parse_resume(pdf_text:str):
             },
             {
                 "role": "user",
-                "content": """Extract the following CV into a JSON dictionary with the exact structure provided below. Each key must contain the full text of the corresponding section from the CV.
-
-**Expected JSON Structure**:
-
-{{
-  "contact_details": "Full text of the contact details section",
-  "bio_summary": "Full text of the bio summary section",
-  "skill_or_tech_stack": "Full text of the skills or tech stack section",
-  "experience": "Full text of the experience section",
-  "education": "Full text of the education section",
-  "licences_certifications": "Full text of the licences and certifications section",
-  "interest_or_milestones": "Full text of the interests or milestones section",
-  "references": "Full text of the references section"
-}}
-
-**CV**:
-
-{pdf_text}
-
-**Instructions**:
-
-- **Do not include any hierarchical or nested structures**.
-- **Do not break down sections into subfields**.
-- **Do not provide additional formatting or summaries**.
-- **Each key must contain the full, unaltered text of the corresponding section from the CV**.
-- **Return only the JSON dictionary with the extracted information, matching the specified structure exactly**.
-
-Return only the JSON dictionary with the extracted information.""".format(pdf_text=pdf_text)
+                "content": parsing_prompt
             }
         ],
         temperature=0,
