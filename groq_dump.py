@@ -38,7 +38,7 @@ pdf_text = _parse_pdf('data/sn_resume.pdf')
 client = AsyncGroq(api_key = groq_key)
 
 async def parse_resume(pdf_text:str):
-    mxTokens = 30000
+    mxTokens = 11000
     completion = await client.chat.completions.create(
         model="mixtral-8x7b-32768",
         messages=[
@@ -48,92 +48,40 @@ async def parse_resume(pdf_text:str):
             },
             {
                 "role": "user",
-                "content": """Given the following CV text, extract and organize the content into a dictionary where the keys are the section headings and values are the corresponding content. Maintain the hierarchical structure and return only valid JSON. Format the section as follows:
-                    
-                    ###START OF FORMAT
-{{
-  "contact_details":{{
-    "name":"",
-    "email": "",
-    "roles": ["", "", ""],
-    "phone_number"
-    "github":""
-  }},
-  "bio_summary": "", 
-  "skill_or_tech_stack": [
-    {{
-    "competency":"",
-    "tools": ""
-    }},
-    {{
-    "competency": "",
-    "tools":""
-    }}
-  ],
-  "experience": [
-    {{
-      "role": "title and company",
-      "period": "dates",
-      "Description": "",
-      "Tasks": {{
-        "": "",
-        "": "",
-        "": "",
-        "": "",
-        "": ""
-      }}
-    }}
-  ],
-  "education": [
-    {{ 
-      "school": "" , 
-      "course": "",
-      "dates": ""
-    }}
-  ],
-  "licences_certifications": [
-    "",
-    ""
-  ],
-  "personal_interest": {{
-    "projects": [
-        {{
-            "name":"",
-            "description":""
-        }},
-        {{
-            "name":"",
-            "description":""
-        }}
-    ],
-    "interests": ["", ""],
-    "milestones": [
-        "",
-        ""
-    ]
-  }}
-  "references": [
-    {{
-        "name": "",
-        "role": "title and company",
-        "phone_number": "",
-        "email": ""
-    }},
-    {{}}
-  ]
-}}
-                    ###END OF FORMAT
+                "content": """Extract the following CV into a JSON dictionary with the exact structure provided below. Each key must contain the full text of the corresponding section from the CV.
 
-                    ### START OF RESUME
-                    {pdf_text}
-                    ### END OF RESUME
-                    Return only a valid JSON dictionary with the extracted information.""".format(pdf_text=pdf_text)
+**Expected JSON Structure**:
+
+{{
+  "contact_details": "Full text of the contact details section",
+  "bio_summary": "Full text of the bio summary section",
+  "skill_or_tech_stack": "Full text of the skills or tech stack section",
+  "experience": "Full text of the experience section",
+  "education": "Full text of the education section",
+  "licences_certifications": "Full text of the licences and certifications section",
+  "interest_or_milestones": "Full text of the interests or milestones section",
+  "references": "Full text of the references section"
+}}
+
+**CV**:
+
+{pdf_text}
+
+**Instructions**:
+
+- **Do not include any hierarchical or nested structures**.
+- **Do not break down sections into subfields**.
+- **Do not provide additional formatting or summaries**.
+- **Each key must contain the full, unaltered text of the corresponding section from the CV**.
+- **Return only the JSON dictionary with the extracted information, matching the specified structure exactly**.
+
+Return only the JSON dictionary with the extracted information.""".format(pdf_text=pdf_text)
             }
         ],
         temperature=0,
         max_tokens=mxTokens,
         top_p=1,
-        # seed=3,
+        seed=100,
         stream=False,
         response_format={"type": "json_object"},
         stop=None,
