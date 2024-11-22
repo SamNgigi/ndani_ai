@@ -30,7 +30,7 @@ class ResumeParser:
             '.pdf': self._read_pdf,
         }
     
-    def _read_pdf(self, file_path: Union[str, Path]) -> str:
+    def _read_pdf(self, file_path:Path) -> str:
         """
         Read PDF documents
 
@@ -66,8 +66,16 @@ class ResumeParser:
             logger.error(f"❌ Error reading prompt file: {str(e)}")
             raise
 
-    async def groq_parse(self, pdf_text:str) -> dict:
+    async def groq_parse(self, file_path:Union[str, Path]) -> dict:
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        file_ext = file_path.suffix.lower()
+        if file_ext not in self.supported_formats:
+            raise ValueError(f"Unsupported file format: {file_ext}")
+
         _prompt = self._load_prompt()
+        pdf_text = self.supported_formats[file_ext](file_path)
         parsing_prompt = _prompt.format(pdf_text = pdf_text)
 
         mxTokens = 11000
@@ -101,7 +109,6 @@ class ResumeParser:
             try:
                 result = json.loads(completion.choices[0].message.content)
                 logger.info(f"✅ Successfully return resume json data")
-                print(completion.choices[0].message)
             except json.JSONDecodeError as e:
                 logger.error(f"❌ Error decoding JSON response: {str(e)}")
                 raise

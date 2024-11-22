@@ -24,22 +24,15 @@ class ResumeProcessor:
 
     async def process_resume(
         self,
-        resume_path:str,
+        resume_data:dict,
     ):
         """
         Process and optimize resume based on Job Description
 
-        Args:
-            resume_path: Path to the resume file
-            job_desc_path: Path to the job description file
-
-        Returns:
-            Dictionary containing processing results
         """
         try:
-            resume_content = self.parser.parse(resume_path)
             return {
-                "original_content": resume_content
+                "original_content": resume_data
             }
         except Exception as e:
             logger.error(f"❌ Error in resume processing: {get_error_details(e)}")

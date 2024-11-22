@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 
 from verify_ollama import get_error_details, load_config, _get_available_gguf_models
 
-from components.document_processor import DocumentParser
 from components.groq_resume_parser import ResumeParser
+from components.resume_processor import ResumeProcessor
 
 load_dotenv()
 
@@ -49,6 +49,7 @@ class ResumeOptimizerApp:
         if not groq_key:
             raise EnvironmentError("GROQ_API_KEY not set in enviroment variables")
         self.parser = ResumeParser(api_key=groq_key, parsing_prompt=prompt_file)
+        self.processor = ResumeProcessor()
 
     def render_sidebar(self) -> Dict:
         """
@@ -121,7 +122,6 @@ class ResumeOptimizerApp:
                 resume_path = temp_resume.name
 
                 result = await self.parser.groq_parse(resume_path)
-                print(json.dumps(result))
                 return result
         except Exception as e:
             st.error(f"Error processing files: {get_error_details(e)}")
@@ -194,19 +194,20 @@ class ResumeOptimizerApp:
             if st.button("🚀 Optimize Resume"):
                 with st.spinner("Processing..."):
                     # Process files. Uses dummy/mock data for now
-                    result =  await self.process_files(resume_file)
+                    resume_data =  await self.process_files(resume_file)
+                    result = await self.processor.process_resume(resume_data)
                     if result:
                         # Store result in session state
                         st.session_state.processing_state = "completed"
                         st.session_state.result = result
                         
                         # Display result
-                        # self.render_results(result)
+                        self.render_results(result)
                     else:
                         st.error("Error processing provided files. Result was empty. Please try again.")
         # Display results if already proceed
-        # elif st.session_state.processing_state == "completed":
-            # self.render_results(st.session_state.result)
+        elif st.session_state.processing_state == "completed":
+            self.render_results(st.session_state.result)
         
 
 if __name__ == "__main__":
