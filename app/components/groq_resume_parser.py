@@ -33,7 +33,7 @@ class ResumeParser:
     def _read_pdf(self, file_path:Path) -> str:
         """
         Read PDF documents
-
+ 
         Args:
             file_path: Path to the PDF file
 

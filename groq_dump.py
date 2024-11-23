@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 groq_key = os.environ.get("GROQ_API_KEY")
 
-def _parse_pdf(file_path:Union[str, Path]) -> str:
+def _read_pdf(file_path:Union[str, Path]) -> str:
     try:
         text = []
         with open(file_path, 'rb') as file:
@@ -30,7 +30,7 @@ def _parse_pdf(file_path:Union[str, Path]) -> str:
         raise
 
 
-pdf_text = _parse_pdf('data/sn_resume.pdf')
+pdf_text = _read_pdf('data/sn_resume.pdf')
 
 # pp.pprint(pdf_text)
 
@@ -79,5 +79,46 @@ async def parse_resume(pdf_text:str):
         logger.error("❌ Did not get response")
     
 
+async def parse_job_description(): 
+    _text = _read_pdf("./data/salesforce_jd.pdf")
 
-asyncio.run(parse_resume(pdf_text))
+    with open("./prompts/parse_jd_prompt.txt", 'r', encoding='utf-8') as prompt:
+        _prompt  = prompt.read()
+    parsing_prompt = _prompt.format(_text=_text)
+    mxTokens = 11000
+    completions = await client.chat.completions.create(
+        model = "mixtral-8x7b-32768",
+        messages = [
+            {
+                "role":"system",
+                "content":"Respond with valid JSON only. Do not include any other text or markdow formatting"
+            },
+            {
+                "role": "user",
+                "content": parsing_prompt
+            }
+        ],
+        temperature=0,
+        max_tokens=mxTokens,
+        top_p=1,
+        seed=100,
+        stream=False,
+        response_format={"type":"json_object"},
+        stop=None
+    )
+    project_root = Path(__file__).parent
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = project_root / "output" / f"jd_parsed_{timestamp}_{mxTokens}tokens.json"
+    output_path.parent.mkdir(exist_ok=True)
+    if completions.choices[0].message.content:
+        result = json.loads(completions.choices[0].message.content)
+        with output_path.open("w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+        logger.info(f"✅ Results save to {output_path}")
+    else:
+        logger.error(f"❌ Did not get response")
+
+
+
+# asyncio.run(parse_resume(pdf_text))
+asyncio.run(parse_job_description())
