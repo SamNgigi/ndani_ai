@@ -4,8 +4,8 @@ Extract the following job description into a JSON dictionary with the exact stru
 
 {{
   "job_title": "Full text of the job title",
-  "company_name": "Full text of the company name",
-  "location": "Full text of the job location",
+    "company_name": "Full text of the company name",
+    "location": "Full text of the job location",
   "employment_type": "Full text of the employment type",
   "job_description": "Full text combining the job summary, responsibilities, and requirements",
   "qualifications": "Full text of the qualifications and skills",
