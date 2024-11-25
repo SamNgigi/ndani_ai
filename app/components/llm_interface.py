@@ -96,6 +96,7 @@ class LlmInterface:
         """
         try:
             config = self.models[self.current_model]
+            logger.info(f"{config.message}...")
 
             completion = await self.client.chat.completions.create(
                 model = config.model_name,

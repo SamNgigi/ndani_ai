@@ -2,6 +2,7 @@ import tempfile
 import asyncio
 import json
 import os
+import pprint as pp
 import streamlit as st
 from pathlib import Path
 from typing import Dict, Union
@@ -104,7 +105,7 @@ class ResumeOptimizerApp:
 
 
        
-    async def process_files(self, resume_file, save_json:bool=False) -> Dict:
+    async def process_files(self, resume_file, jd_file, save_json:bool=False) -> Dict:
         """
         Process uploaded files
 
@@ -123,11 +124,19 @@ class ResumeOptimizerApp:
                 prefix=f"{Path(resume_file.name).stem}_"
             ) as temp_resume:
                 temp_resume.write(resume_file.getbuffer())
-                resume_path = temp_resume.name # TODO: Assign actual filename to temp file
+                resume_path = temp_resume.name
 
-                resume_json = await self.processor._parse_resume(resume_path, save_json)
+            resume_json = await self.processor._parse_resume(resume_path, save_json)
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=Path(jd_file.name).suffix, 
+                prefix=f"{Path(jd_file.name).stem}_"
+            ) as temp_jd:
+                temp_jd.write(jd_file.getbuffer())
+                jd_path = temp_jd.name
 
-                return {"original_content": resume_json}
+            jd_json = await self.processor._parse_resume(jd_path, save_json)
+            return {"original_content": resume_json}
         except Exception as e:
             st.error(f"Error processing files: {get_error_details(e)}")
             raise
@@ -199,7 +208,7 @@ class ResumeOptimizerApp:
             if st.button("🚀 Optimize Resume"):
                 with st.spinner("Processing..."):
                     # Process files. Uses dummy/mock data for now
-                    result =  await self.process_files(resume_file)
+                    result =  await self.process_files(resume_file, job_desc_file)
                     if result:
                         # Store result in session state
                         st.session_state.processing_state = "completed"

@@ -59,13 +59,40 @@ class ResumeProcessor:
             parse_resume_prompt = user_prompt.format(pdf_text = pdf_text)
             resume_json = await self.llm.generate(parse_resume_prompt, system_prompt)
             if not resume_json:
-                logger.error(f"❌ Resume Processor: `result` was not returned")
+                logger.error(f"❌ ResumeProcessor: `resume_json` is empty")
                 return {}
+            logger.info("✅ ResumeProcessor: `resume_json` returned successfully")
             if save_json:
                 self._write_json(resume_json, file_path.stem, self.llm.current_model)
             return resume_json
         except Exception as e:
             logger.error(f"❌ ResumeProcessor:: Error parsing resume: {str(e)}")
+            raise
+
+    async def _parse_jd(self, file_path:Union[str, Path], save_json:bool=False):
+        file_path = Path(file_path)
+        if not file_path.exists():
+            logger.error(f"❌ File not found: {file_path}")
+            raise FileNotFoundError(f"File not found: {file_path}")
+        file_ext = file_path.suffix.lower()
+        if file_ext not in self.supported_formats:
+            logger.error(f"❌ Unsupported file format: {file_ext}")
+            raise ValueError(f"Unsupported file format: {file_ext}")
+
+        try:
+            pdf_text = self.supported_formats[file_ext](file_path)
+            system_prompt = self._load_prompt('sys_valid_json')
+            user_prompt = self._load_prompt('parse_jd')
+            parse_jd_prompt = user_prompt.format(pdf_text=pdf_text)
+            jd_json = await self.llm.generate(parse_jd_prompt, system_prompt)
+            if not jd_json:
+                logger.error("❌ Resume Processor: `jd_json` is empty")
+                return {}
+            logger.info("✅ ResumeProcessor:`jd_json` returned successfully")
+            if save_json:
+                self._write_json(jd_json, file_path.stem, self.llm.current_model)
+        except Exception as e:
+            logger.error(f"❌ Resume Processor:: Error parsing job description: {str(e)}")
             raise
 
     def _read_pdf(self, file_path: Path)->str:
