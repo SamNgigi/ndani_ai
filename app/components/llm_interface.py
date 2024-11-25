@@ -5,7 +5,7 @@ import logging
 import backoff # For exponential backoff in retries 
 from tenacity import retry, stop_after_attempt, wait_exponential
 from typing import Optional, Dict, Union, List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from groq import AsyncGroq
 from groq.types.chat.chat_completion import ChatCompletion
 from groq.types.chat.completion_create_params import ResponseFormat
@@ -20,11 +20,11 @@ class GroqConfig:
     """Configuration for Groq Cloud"""
     model_name:str
     max_tokens:int
-    temperature:Dict[str, float] = {"strict":0.0, "precise":0.3, "balanced": 0.5, "creative":0.7}
+    temperature:Dict[str, float] = field(default_factory = lambda: {"strict":0.0, "precise":0.3, "balanced": 0.5, "creative":0.7})
     top_p:int=1
     seed:Optional[int]=100
     stream:bool=False
-    response_format:ResponseFormat = {'type':'json_object'} # text or json_object
+    response_format:ResponseFormat = field(default_factory = lambda:{'type':'json_object'}) # text or json_object
     stop:Union[str, None] = None
     message: Optional[str] = None
 
@@ -50,7 +50,7 @@ class LlmInterface:
         self.client = AsyncGroq(api_key=api_key)
         self.models = {
             'mixtral': GroqConfig(
-                model_name='mixtral-8x7-32768',
+                model_name='mixtral-8x7b-32768',
                 max_tokens = 11000
             ),
             'llama-versatile': GroqConfig(

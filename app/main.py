@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 from verify_ollama import get_error_details, load_config, _get_available_gguf_models
 
-from components.groq_resume_parser import ResumeParser
+from components.llm_interface import LlmInterface
 from components.resume_processor import ResumeProcessor
 
 load_dotenv()
@@ -48,8 +48,8 @@ class ResumeOptimizerApp:
         prompt_file = project_root/ "prompts" / "parse_resume_prompt.txt"
         if not groq_key:
             raise EnvironmentError("GROQ_API_KEY not set in enviroment variables")
-        self.parser = ResumeParser(api_key=groq_key, parsing_prompt=prompt_file)
-        self.processor = ResumeProcessor()
+        self.llm = LlmInterface(api_key=groq_key)
+        self.processor = ResumeProcessor(self.llm)
 
     def render_sidebar(self) -> Dict:
         """
@@ -104,7 +104,7 @@ class ResumeOptimizerApp:
 
 
        
-    async def process_files(self, resume_file) -> Dict:
+    async def process_files(self, resume_file, save_json:bool=False) -> Dict:
         """
         Process uploaded files
 
@@ -117,12 +117,17 @@ class ResumeOptimizerApp:
             Dictionary contaning processing results
         """
         try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=Path(resume_file.name).suffix) as temp_resume:
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=Path(resume_file.name).suffix, 
+                prefix=f"{Path(resume_file.name).stem}_"
+            ) as temp_resume:
                 temp_resume.write(resume_file.getbuffer())
-                resume_path = temp_resume.name
+                resume_path = temp_resume.name # TODO: Assign actual filename to temp file
 
-                result = await self.parser.groq_parse(resume_path)
-                return result
+                resume_json = await self.processor._parse_resume(resume_path, save_json)
+
+                return {"original_content": resume_json}
         except Exception as e:
             st.error(f"Error processing files: {get_error_details(e)}")
             raise
@@ -194,8 +199,7 @@ class ResumeOptimizerApp:
             if st.button("🚀 Optimize Resume"):
                 with st.spinner("Processing..."):
                     # Process files. Uses dummy/mock data for now
-                    resume_data =  await self.process_files(resume_file)
-                    result = await self.processor.process_resume(resume_data)
+                    result =  await self.process_files(resume_file)
                     if result:
                         # Store result in session state
                         st.session_state.processing_state = "completed"
