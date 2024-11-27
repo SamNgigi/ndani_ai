@@ -82,6 +82,9 @@ class LlmInterface:
         self.current_model = model_name
         logger.info(f"ℹ️  Switched to model: {model_name}")
 
+    def set_temperature(self, temperature:str):
+        self.current_temperature = temperature
+
     @backoff.on_exception(
         backoff.expo,
         (asyncio.TimeoutError),

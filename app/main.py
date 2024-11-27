@@ -105,7 +105,7 @@ class ResumeOptimizerApp:
 
 
        
-    async def process_files(self, resume_file, jd_file, save_json:bool=False) -> Dict:
+    async def process_files(self, resume_file, jd_file, save_json:bool=True) -> Dict:
         """
         Process uploaded files
 
@@ -135,8 +135,16 @@ class ResumeOptimizerApp:
                 temp_jd.write(jd_file.getbuffer())
                 jd_path = temp_jd.name
 
-            jd_json = await self.processor._parse_resume(jd_path, save_json)
-            return {"original_content": resume_json}
+            jd_json = await self.processor._parse_jd(jd_path, save_json)
+            if not self.processor.resume_json_path and self.processor.jd_json_path:
+                return {}
+            
+            return await self.processor._optimize_resume(
+                self.processor.resume_json_path,
+                self.processor.jd_json_path,
+                "balanced",
+                save_json
+            )
         except Exception as e:
             st.error(f"Error processing files: {get_error_details(e)}")
             raise
@@ -145,7 +153,7 @@ class ResumeOptimizerApp:
         """Render processing results with visualizations"""
         # Disiplay Content Comparison
         st.header("Resume Optimizaton Results")
-        self._render_content_comparison(results["original_content"])
+        self._render_content_comparison(results["original_content"], results["modified_content"])
 
     def _render_ats_score(self):
         pass
@@ -153,11 +161,12 @@ class ResumeOptimizerApp:
     def _render_content_comparison(
         self, 
         original: Dict[str, str], 
+        modified: Dict[str, dict], 
     ):
         """Render side-by-side commparison of original and modified content"""
         st.subheader("Content Comparison")
         
-        for section in original.keys():
+        for section in modified.keys():
             with st.expander(f"📝 {section.title()}", expanded=True):
                 col1, col2 = st.columns(2)
                 
@@ -165,7 +174,7 @@ class ResumeOptimizerApp:
                     st.markdown("**Original Content**")
                     st.text_area(
                         "Original",
-                        value=original[section],
+                        value= original[section],
                         height = 200,
                         key = f"original_{section}",
                         disabled=True
@@ -175,11 +184,13 @@ class ResumeOptimizerApp:
                     st.markdown("**Modified Content**")
                     st.text_area(
                         "Modified",
-                        value="TODO",
+                        value=modified[section]["updated_content"],
                         height = 200,
-                        key = f"modified_{section}_todo",
+                        key = f"modified_{section}_1",
                         disabled=True
                     )
+
+                st.info(f"Comments: {modified[section]['improvements']}")
 
         
 
@@ -231,5 +242,6 @@ if __name__ == "__main__":
         st.warning("\n⚠️  Verification interrupted by user")
     except Exception as e:
         st.error(f"❌ Unexpected error: {get_error_details(e)}")
+        raise
 
     
