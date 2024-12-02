@@ -1,0 +1,30 @@
+Extract the following job description into a JSON dictionary with the exact structure provided below. Each key must contain the full text of the corresponding section from the job description.
+
+**Expected JSON Structure**:
+
+{{
+  "job_title": "Full text of the job title",
+    "company_name": "Full text of the company name",
+    "location": "Full text of the job location",
+  "employment_type": "Full text of the employment type",
+  "job_description": "Full text combining the job summary, responsibilities, and requirements",
+  "qualifications": "Full text of the qualifications and skills",
+  "benefits": "Full text of the benefits and perks",
+  "salary": "Full text of the salary range or compensation details",
+  "application_instructions": "Full text of the application instructions",
+  "company_overview": "Full text of the about company section"
+}}
+
+**Job Description**:
+
+{_text}
+
+**Instructions**:
+
+- **Do not include any hierarchical or nested structures**.
+- **Do not break down sections into subfields**.
+- **Do not provide additional formatting or summaries**.
+- **Each key must contain the full, unaltered text of the corresponding section from the job description**.
+- **Return only the JSON dictionary with the extracted information, matching the specified structure exactly**.
+
+Return only the JSON dictionary with the extracted information.
