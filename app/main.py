@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Dict, Union
 from dotenv import load_dotenv
 
-from verify_ollama import get_error_details, load_config, _get_available_gguf_models
 
 from components.llm_interface import LlmInterface
 from components.resume_processor import ResumeProcessor
@@ -61,9 +60,8 @@ class ResumeOptimizerApp:
         """
         try:
             with st.sidebar:
-                config = load_config()
-                models = _get_available_gguf_models(config)
-                model_options = {model_name : model for model_name, model in models}
+              
+                model_options = {"mixtral": "mixtral", "llama3.1": "llama3.2"}
                 
                 selected_model = st.selectbox(
                     "Select LLM Model",
@@ -74,7 +72,7 @@ class ResumeOptimizerApp:
                 }
 
         except Exception as e:
-            st.error(f"Error rendering sidebar: {get_error_details(e)}")
+            st.error(f"Error rendering sidebar: {str(e)}")
             raise
 
     def render_file_upload(self):
@@ -146,7 +144,7 @@ class ResumeOptimizerApp:
                 save_json
             )
         except Exception as e:
-            st.error(f"Error processing files: {get_error_details(e)}")
+            st.error(f"Error processing files: {str(e)}")
             raise
     
     def render_results(self, results:Dict):
@@ -241,7 +239,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         st.warning("\n⚠️  Verification interrupted by user")
     except Exception as e:
-        st.error(f"❌ Unexpected error: {get_error_details(e)}")
+        st.error(f"❌ Unexpected error: {str(e)}")
         raise
 
     
