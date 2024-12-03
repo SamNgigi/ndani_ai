@@ -65,9 +65,7 @@ pytest-cov
 python-docx
 python-dotenv
 pytz
-pywin32
 referencing
-requests
 rich
 rpds-py
 scikit-learn
