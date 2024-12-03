@@ -26,7 +26,7 @@ class ResumeOptimizerApp:
         """Configure Initial Streamlit page settings and session state"""
         # Configure page
         st.set_page_config(
-            page_title = "Ndani AI Resume Optimizer",
+            page_title = "Wera AI Resume Optimizer",
             page_icon="📝",
             layout="wide",
             initial_sidebar_state="expanded",
@@ -177,7 +177,6 @@ class ResumeOptimizerApp:
                         key = f"original_{section}",
                         disabled=True
                     )
-                # TODO:: LLM generated content to go here
                 with col2:
                     st.markdown("**Modified Content**")
                     st.text_area(
@@ -205,7 +204,7 @@ class ResumeOptimizerApp:
         pass
 
     async def main(self):
-        st.title("Ndani AI Resume Optimizer")
+        st.title("Wera AI Resume Optimizer")
 
         # Get configuration from sidebar
         config = self.render_sidebar()
