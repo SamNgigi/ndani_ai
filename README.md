@@ -1,6 +1,6 @@
 # Wera Ai Resume Optimizer (W.I.P)
 
-This is an MVP for an intelligent resume optimization tool powered by advanced open source language models that helps job seekers tailor their resumes to specific job descriptions and generate appropriate cover letters.
+This is an MVP for an intelligent resume optimization AI agent powered by advanced open source language models that helps job seekers tailor their resumes to specific job descriptions and generate appropriate cover letters.
 
 Optimization and additional features coming soon
 
@@ -13,6 +13,8 @@ Optimization and additional features coming soon
 - **Real-time Processing**: Instant feedback and optimization suggestions
 - **Content Comparison**: Side-by-side view of original and optimized content
 - **Multiple Model Support**: Compatible with various LLM models (Mixtral, LLaMA)
+
+**NOTE**: Currently total inference may take up to 2 minutes because of the multi-step inferencing required.
 
 ## 🔧 Technical Stack
 
