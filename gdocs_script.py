@@ -4,6 +4,16 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 import os.path
 import pickle
+import pprint as pp
+import logging
+from pathlib import Path
+import json
+from datetime import datetime
+
+from app.utils import write_json
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class GoogleDocsClient:
     """
@@ -124,6 +134,22 @@ class GoogleDocsClient:
                 pass
         return ''.join(text)
 
+    def get_required_sections(self, elements):
+        required_elements = []
+        counter = 0
+        start_stop_idx = []
+        for element in elements:
+            if 'paragraph' in element:
+                elements = element.get('paragraph').get('elements')
+                for el in elements:
+                    if el.get('textRun').get('content').lower() in ['summary\n', 'education\n']:
+                        start_stop_idx.append(counter)
+            counter += 1
+        print(start_stop_idx)
+
+
+
+
 def main():
     """
     Example usage of the GoogleDocsClient
@@ -140,12 +166,13 @@ def main():
         
         # Get the document
         doc = client.get_document(DOCUMENT_ID)
-        
-        # Read and print the text content
         if doc:
-            doc_content = client.read_structural_elements(doc.get('body').get('content'))
-            print(f"Document content:\n{doc_content}")
-        
+            client.get_required_sections(doc.get('body').get('content'))
+        # # Read and print the text content
+        # if doc:
+        #     doc_content = client.read_structural_elements(doc.get('body').get('content'))
+        #     print(f"Document content:\n{doc_content}")
+        # 
     except Exception as e:
         print(f"An error occurred: {e}")
 
