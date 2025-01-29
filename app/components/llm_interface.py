@@ -54,12 +54,16 @@ class LlmInterface:
                 max_tokens = 11000
             ),
             'llama-versatile': GroqConfig(
-                model_name='llama-3.1-70b-versatile',
-                max_tokens = 8000
+                model_name='llama-3.3-70b-versatile',
+                max_tokens = 11000
             ),
             'llama-instant': GroqConfig(
-                model_name='llama-3.1-8b-instant',
+                model_name='llama-3.3-8b-instant',
                 max_tokens = 8000
+            ),
+            'deepseek': GroqConfig(
+                model_name='deepseek-r1-distill-llama-70b',
+                max_tokens = 11000
             )
         }
         self.current_model = 'mixtral' # Default

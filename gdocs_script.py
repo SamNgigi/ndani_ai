@@ -135,6 +135,12 @@ class GoogleDocsClient:
         return ''.join(text)
 
     def get_required_sections(self, elements):
+        """
+        Returns required sections from google doc
+
+        Slices element list to return only required elements that have the necessary
+        sections
+        """
         required_elements = []
         counter = 0
         start_stop_idx = []

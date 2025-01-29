@@ -140,7 +140,7 @@ class ResumeOptimizerApp:
             return await self.processor._optimize_resume(
                 self.processor.resume_json_path,
                 self.processor.jd_json_path,
-                "balanced",
+                "strict",
                 save_json
             )
         except Exception as e:
@@ -187,7 +187,9 @@ class ResumeOptimizerApp:
                         disabled=True
                     )
 
-                st.info(f"Comments: {modified[section]['improvements']}")
+                st.info(
+                    f"Comments: {modified[section]['improvements']} Word Count:{len(original[section])} -> {len(modified[section]['updated_content'])}"
+                )
 
         
 

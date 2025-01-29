@@ -57,6 +57,8 @@ class ResumeProcessor:
             sys_prompt = self._load_prompt('sys_resume_optimizer')
             user_prompt = self._load_prompt('claude_optimize_resume')
             optimize_resume_prompt = user_prompt.format(resume_json=resume_required_sections, jd_json=jd_required_sections)
+            # self.llm.set_model('deepseek')
+            # self.llm.set_model('llama-versatile')
             self.llm.set_temperature(temperature)
             optimized_resume_data = await self.llm.generate(optimize_resume_prompt, sys_prompt)
             if not optimized_resume_data:
