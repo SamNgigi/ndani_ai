@@ -14,7 +14,7 @@ Optimization and additional features coming soon
 - **Content Comparison**: Side-by-side view of original and optimized content
 - **Multiple Model Support**: Compatible with various LLM models (Mixtral, LLaMA)
 
-**NOTE**: Currently total inference may take up to 2 minutes because of the multi-step inferencing required.
+**NOTE**: Currently total inference may take up to 2 minutes because of the multi-step inferencing required. Also one of the models was decommissioned, updating model soon
 
 ## 🔧 Technical Stack
 
