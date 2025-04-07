@@ -61,7 +61,7 @@ class ResumeOptimizerApp:
         try:
             with st.sidebar:
               
-                model_options = {"mixtral": "mixtral", "llama3.1": "llama3.2"}
+                model_options = {"mixtral": "mixtral", "llama3.3": "llama3.2", "deepseek": "deepseek"}
                 
                 selected_model = st.selectbox(
                     "Select LLM Model",
