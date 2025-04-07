@@ -4,6 +4,10 @@ This is an MVP for an intelligent resume optimization AI agent powered by advanc
 
 Optimization and additional features coming soon
 
+<!--
+https://wera-ai.streamlit.app/
+-->
+
 ## 🌟 Features
 
 - **Resume Analysis**: Automatically extracts and structures information from PDF resumes
@@ -14,7 +18,7 @@ Optimization and additional features coming soon
 - **Content Comparison**: Side-by-side view of original and optimized content
 - **Multiple Model Support**: Compatible with various LLM models (Mixtral, LLaMA)
 
-**NOTE**: Currently total inference may take up to 2 minutes because of the multi-step inferencing required.
+**NOTE**: Currently total inference may take up to 2 minutes because of the multi-step inferencing required. Also one of the models was decommissioned, updating model soon
 
 ## 🔧 Technical Stack
 
@@ -133,6 +137,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
 
 ## 📄 License
 
